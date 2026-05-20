@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DataGuard — Redundancy Removal System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #0a0e1a;
+      --surface:   #111827;
+      --panel:     #1a2235;
+      --border:    #1e3a5f;
+      --accent:    #00d4ff;
+      --accent2:   #7c3aed;
+      --green:     #10b981;
+      --red:       #ef4444;
+      --yellow:    #f59e0b;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --font-head: 'Syne', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 0 20px rgba(0,212,255,0.3);
+    }
+
+    .logo-text h1 {
+      font-family: var(--font-head);
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-text p {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .mode-badge {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.4rem 1rem;
+      font-size: 0.7rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .mode-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── Stats Bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--accent); }
+
+    .stat-icon {
+      font-size: 1.8rem;
+      flex-shrink: 0;
+    }
+
+    .stat-info label {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 0.2rem;
+    }
+
+    .stat-value {
+      font-family: var(--font-head);
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    /* ── Main Grid ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 700px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .stats-bar { grid-template-columns: 1fr; }
+    }
+
+    /* ── Panels ── */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.5px;
+    }
+
+    .panel-body { padding: 1.5rem; }
+
+    /* ── Form Fields ── */
+    .field-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    label.field-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+    }
+
+    input[type="text"], input[type="email"], textarea, select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      padding: 0.65rem 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+    }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    .field-full { grid-column: 1 / -1; }
+
+    /* ── Buttons ── */
+    .btn-row {
+      display: flex;
+      gap: 0.8rem;
+      margin-top: 1.2rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #0099bb);
+      color: #000;
+      box-shadow: 0 4px 15px rgba(0,212,255,0.2);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0,212,255,0.35);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* ── Result Box ── */
+    .result-box {
+      margin-top: 1.2rem;
+      padding: 1rem 1.2rem;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      display: none;
+      animation: fadeIn 0.3s ease;
+      border-left: 4px solid;
+    }
+
+    .result-box.show { display: block; }
+
+    .result-box.success {
+      background: rgba(16,185,129,0.1);
+      border-color: var(--green);
+      color: #6ee7b7;
+    }
+
+    .result-box.error {
+      background: rgba(239,68,68,0.1);
+      border-color: var(--red);
+      color: #fca5a5;
+    }
+
+    .result-box.warning {
+      background: rgba(245,158,11,0.1);
+      border-color: var(--yellow);
+      color: #fcd34d;
+    }
+
+    .hash-display {
+      margin-top: 0.5rem;
+      font-size: 0.65rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Records Table ── */
+    .records-panel { grid-column: 1 / -1; }
+
+    .records-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 1px;
+    }
+
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 0.7rem 1rem;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(30,58,95,0.5);
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover { background: rgba(0,212,255,0.04); }
+
+    tbody td {
+      padding: 0.85rem 1rem;
+      vertical-align: middle;
+    }
+
+    .hash-cell {
+      font-size: 0.65rem;
+      color: var(--muted);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      background: rgba(16,185,129,0.15);
+      color: var(--green);
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+
+    .del-btn {
+      background: transparent;
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--red);
+      padding: 0.3rem 0.6rem;
+      border-radius: 5px;
+      font-size: 0.65rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-mono);
+    }
+
+    .del-btn:hover {
+      background: rgba(239,68,68,0.1);
+      border-color: var(--red);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+
+    /* ── How it works ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .step {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-text strong {
+      display: block;
+      font-size: 0.82rem;
+      margin-bottom: 0.2rem;
+      font-family: var(--font-head);
+    }
+
+    .step-text p {
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🛡️</div>
+      <div class="logo-text">
+        <h1>DataGuard</h1>
+        <p>Redundancy Removal System</p>
+      </div>
+    </div>
+    <div class="mode-badge">
+      <span class="mode-dot"></span>
+      <span id="modeLabel">{{ mode }}</span>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-icon">🗄️</div>
+      <div class="stat-info">
+        <label>Total Records</label>
+        <div class="stat-value" id="statTotal">—</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-info">
+        <label>Added This Session</label>
+        <div class="stat-value" id="statAdded">0</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⚠️</div>
+      <div class="stat-info">
+        <label>Duplicates Blocked</label>
+        <div class="stat-value" id="statDups">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Add Data Panel -->
+    <div class="panel">
+      <div class="panel-header">➕ Add New Data Entry</div>
+      <div class="panel-body">
+        <div class="field-group">
+          <div class="field">
+            <label class="field-label">Full Name</label>
+            <input type="text" id="fieldName" placeholder="e.g. Ravi Kumar"/>
+          </div>
+          <div class="field">
+            <label class="field-label">Email</label>
+            <input type="text" id="fieldEmail" placeholder="e.g. ravi@email.com"/>
+          </div>
+          <div class="field">
+            <label class="field-label">Category</label>
+            <select id="fieldCategory">
+              <option value="">— Select —</option>
+              <option>Student</option>
+              <option>Employee</option>
+              <option>Customer</option>
+              <option>Admin</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">ID / Roll No.</label>
+            <input type="text" id="fieldId" placeholder="e.g. CS2024001"/>
+          </div>
+          <div class="field field-full">
+            <label class="field-label">Notes (optional)</label>
+            <textarea id="fieldNotes" placeholder="Any additional info..."></textarea>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addEntry()">
+            ⬆️ Submit to Cloud
+          </button>
+          <button class="btn btn-secondary" onclick="checkOnly()">
+            🔍 Check Only
+          </button>
+        </div>
+
+        <div class="result-box" id="resultBox"></div>
+      </div>
+    </div>
+
+    <!-- How It Works Panel -->
+    <div class="panel">
+      <div class="panel-header">⚙️ How It Works</div>
+      <div class="panel-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <strong>Data Input</strong>
+              <p>User submits a new data entry via the form. Fields are cleaned and normalized.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <strong>SHA-256 Fingerprinting</strong>
+              <p>A unique hash is generated from the entry's content — acts as a digital fingerprint.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <strong>Cloud Validation</strong>
+              <p>The hash is checked against all existing records in Firebase Firestore (Google Cloud).</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-text">
+              <strong>Decision Gate</strong>
+              <p>Duplicate? Blocked with reason. Unique? Saved instantly to the cloud database.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-text">
+              <strong>Clean Database</strong>
+              <p>Only verified, unique entries live in the cloud — zero redundancy guaranteed.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Records Table -->
+    <div class="panel records-panel">
+      <div class="panel-header">
+        <div class="records-header" style="width:100%">
+          <span>📋 Cloud Database Records</span>
+          <button class="refresh-btn" onclick="loadRecords()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Category</th>
+                <th>ID</th>
+                <th>Hash (SHA-256)</th>
+                <th>Timestamp</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="recordsBody">
+              <tr>
+                <td colspan="9">
+                  <div class="empty-state">
+                    <div class="icon">🌐</div>
+                    <p>Loading records from cloud...</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+
+  <footer>
+    <span>CodeAlpha Cloud Computing Internship — Task 1: Data Redundancy Removal System</span>
+    <span>Built with Python · Flask · Firebase Firestore</span>
+  </footer>
+
+</div><!-- /container -->
+
+<script>
+  let sessionAdded = 0;
+  let sessionDups  = 0;
+
+  // ── Collect form data ──
+  function getFormData() {
+    const name     = document.getElementById('fieldName').value.trim();
+    const email    = document.getElementById('fieldEmail').value.trim();
+    const category = document.getElementById('fieldCategory').value;
+    const id       = document.getElementById('fieldId').value.trim();
+    const notes    = document.getElementById('fieldNotes').value.trim();
+    if (!name && !email && !id) {
+      showResult('warning', '⚠️ Please fill in at least Name, Email, or ID before submitting.');
+      return null;
+    }
+    const obj = {};
+    if (name)     obj.name     = name;
+    if (email)    obj.email    = email;
+    if (category) obj.category = category;
+    if (id)       obj.id       = id;
+    if (notes)    obj.notes    = notes;
+    return obj;
+  }
+
+  // ── Add Entry ──
+  async function addEntry() {
+    const data = getFormData();
+    if (!data) return;
+    const btn = document.querySelector('.btn-primary');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Checking cloud...';
+    try {
+      const res  = await fetch('/api/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data })
+      });
+      const json = await res.json();
+      if (json.status === 'saved') {
+        showResult('success', json.message + `<div class="hash-display">🔑 Hash: ${json.hash}</div><div class="hash-display" style="margin-top:4px">📦 Record ID: ${json.id}</div>`);
+        sessionAdded++;
+        document.getElementById('statAdded').textContent = sessionAdded;
+        clearForm();
+        loadRecords();
+      } else if (json.status === 'duplicate') {
+        showResult('error', json.message + `<div class="hash-display">🔑 Hash: ${json.hash}</div>`);
+        sessionDups++;
+        document.getElementById('statDups').textContent = sessionDups;
+      } else {
+        showResult('warning', json.message || 'Unexpected response.');
+      }
+    } catch (e) {
+      showResult('error', '❌ Could not reach server. Is Flask running?');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '⬆️ Submit to Cloud';
+  }
+
+  // ── Check Only ──
+  async function checkOnly() {
+    const data = getFormData();
+    if (!data) return;
+    try {
+      const res  = await fetch('/api/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data })
+      });
+      const json = await res.json();
+      if (json.is_duplicate) {
+        showResult('warning', `⚠️ This entry is a duplicate. ${json.reason}<div class="hash-display">🔑 Hash: ${json.hash}</div>`);
+      } else {
+        showResult('success', `✅ This entry is unique — not in the database yet.<div class="hash-display">🔑 Hash: ${json.hash}</div>`);
+      }
+    } catch (e) {
+      showResult('error', '❌ Could not reach server.');
+    }
+  }
+
+  // ── Load Records ──
+  async function loadRecords() {
+    try {
+      const res   = await fetch('/api/records');
+      const json  = await res.json();
+      const tbody = document.getElementById('recordsBody');
+      document.getElementById('statTotal').textContent = json.count;
+
+      if (!json.records || json.records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">☁️</div><p>No records yet. Add your first entry above!</p></div></td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = json.records.map((r, i) => {
+        const d  = r.data || {};
+        const ts = r.timestamp ? new Date(r.timestamp).toLocaleString() : '—';
+        const h  = (r.hash || '').substring(0, 16) + '...';
+        return `
+          <tr>
+            <td style="color:var(--muted)">${i + 1}</td>
+            <td>${d.name || '—'}</td>
+            <td>${d.email || '—'}</td>
+            <td>${d.category || '—'}</td>
+            <td>${d.id || '—'}</td>
+            <td class="hash-cell" title="${r.hash}">${h}</td>
+            <td style="color:var(--muted);font-size:0.7rem">${ts}</td>
+            <td><span class="status-badge">${r.status || 'unique'}</span></td>
+            <td><button class="del-btn" onclick="deleteRecord('${r.id}')">✕ Delete</button></td>
+          </tr>`;
+      }).join('');
+    } catch (e) {
+      console.error('Load error:', e);
+    }
+  }
+
+  // ── Delete ──
+  async function deleteRecord(id) {
+    if (!confirm('Delete this record?')) return;
+    try {
+      await fetch(`/api/delete/${id}`, { method: 'DELETE' });
+      loadRecords();
+    } catch (e) {
+      alert('Delete failed.');
+    }
+  }
+
+  // ── UI Helpers ──
+  function showResult(type, msg) {
+    const box = document.getElementById('resultBox');
+    box.className = `result-box show ${type}`;
+    box.innerHTML = msg;
+  }
+
+  function clearForm() {
+    ['fieldName','fieldEmail','fieldId','fieldNotes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('fieldCategory').value = '';
+  }
+
+  // ── Init ──
+  loadRecords();
+  setInterval(loadRecords, 30000); // auto-refresh every 30s
+</script>
+</body>
+</html>
