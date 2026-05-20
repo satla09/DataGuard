@@ -119,7 +119,4 @@ __pycache__/
 
 ---
 
-## 👨‍💻 Author
-- **Intern at:** CodeAlpha
-- **Domain:** Cloud Computing
-- **Task:** 1 — Data Redundancy Removal System
+
